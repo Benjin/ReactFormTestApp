@@ -6,11 +6,17 @@ import {
     Option,
     makeStyles,
     Button,
+    Dialog,
+    DialogBody,
+    useRestoreFocusTarget,
+    DialogSurface,
+    DialogTitle,
+    Text,
 } from "@fluentui/react-components";
 import type { InputProps } from "@fluentui/react-components";
-import { useConnection, useConnectionDispatch } from "./ConnectionContext";
 import { AuthType, IConnectionDialogProfile } from "./IConnectionDialogProfile";
 import { FormAction, FormProvider, useForm, useFormDispatch } from "./Form";
+import { useState } from "react";
 
 const useStyles = makeStyles({
     root: {
@@ -30,7 +36,7 @@ const initialConnectionProfile: IConnectionDialogProfile = {
 };
 
 function formReducer<T>(formData: T, action: FormAction): T {
-    switch (action.type) {
+    switch (action.action) {
         case "set": {
             if (!action.property || action.value === undefined)
                 throw new Error('Action "set" requires property and value');
@@ -62,17 +68,24 @@ export function ConnectionDialogForm(props: InputProps) {
     const connection = useForm<IConnectionDialogProfile>();
     const dispatch = useFormDispatch();
     const styles = useStyles();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
     return (
         <div className={styles.root}>
             <h1>Connection Dialog</h1>
 
-            <Field label="Server">
+            <Field
+                label="Server"
+                validationMessage={
+                    !connection.server ? "Server is required" : ""
+                }
+            >
                 <Input
                     value={connection.server}
                     onChange={(e) => {
                         dispatch({
-                            type: "set",
+                            action: "set",
                             property: "server",
                             value: e.target.value,
                         });
@@ -85,7 +98,7 @@ export function ConnectionDialogForm(props: InputProps) {
                     value={connection.authType}
                     onOptionSelect={(e, d) => {
                         dispatch({
-                            type: "set",
+                            action: "set",
                             property: "authType",
                             value: d.optionValue,
                         });
@@ -103,7 +116,7 @@ export function ConnectionDialogForm(props: InputProps) {
                         value={connection.user}
                         onChange={(e) => {
                             dispatch({
-                                type: "set",
+                                action: "set",
                                 property: "user",
                                 value: e.target.value,
                             });
@@ -117,7 +130,7 @@ export function ConnectionDialogForm(props: InputProps) {
                         value={connection.tenant}
                         onOptionSelect={(e, d) => {
                             dispatch({
-                                type: "set",
+                                action: "set",
                                 property: "tenant",
                                 value: d.optionValue,
                             });
@@ -132,13 +145,30 @@ export function ConnectionDialogForm(props: InputProps) {
                 </Field>
             )}
 
-            <Button>Connect</Button>
+            <Button
+                {...restoreFocusTargetAttribute}
+                onClick={() => {
+                    setDialogOpen(true);
+                }}
+            >
+                Connect
+            </Button>
 
             <Textarea
                 value={JSON.stringify(connection)}
                 readOnly={true}
                 disabled={true}
             />
+
+            <Dialog
+                open={dialogOpen}
+                onOpenChange={(_e, data) => setDialogOpen(data.open)}
+            >
+                <DialogSurface>
+                    <DialogTitle>Connection successful!</DialogTitle>
+                    <DialogBody><Text>You've connected with <code>{ JSON.stringify(connection) }</code></Text></DialogBody>
+                </DialogSurface>
+            </Dialog>
         </div>
     );
 }

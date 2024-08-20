@@ -5,18 +5,18 @@ const FormContext = createContext<any | null>(null);
 const FormDispatchContext = createContext<React.Dispatch<FormAction> | null>(null);
 
 export interface FormAction {
-    type: 'set';
+    action: string;
     property: string;
     value: any;
   }
 
-interface FormProviderProps<T> {
-    initialState: T;
-    reducer: (state: T, action: FormAction) => T;
+interface FormProviderProps<TState> {
+    initialState: TState;
+    reducer: (state: TState, action: FormAction) => TState;
     children: ReactNode;
   }
 
-export function FormProvider<T>({ initialState, reducer, children }: FormProviderProps<T>) {
+export function FormProvider<TState>({ initialState, reducer, children }: FormProviderProps<TState>) {
   const [formData, dispatch] = useReducer(reducer, initialState);
 
   return (
