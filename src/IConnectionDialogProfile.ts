@@ -1,4 +1,5 @@
 export interface IConnectionDialogProfile {
+    profileName: string,
     server: string,
     authType: AuthType
     user?: string

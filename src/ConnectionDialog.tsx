@@ -39,44 +39,62 @@ interface ConnectionDialogState {
 function connectionDialogReducer(
     state: ConnectionDialogState,
     action: FormAction
-): void {
+): ConnectionDialogState {
     switch (action.action) {
         case "set": {
             if (!action.property || action.value === undefined)
                 throw new Error('Action "set" requires property and value');
 
-            state[action.property as keyof ConnectionDialogState] = action.value;
-            
-            break;
-            // return output;
+            const output: ConnectionDialogState = {
+                ...state,
+                [action.property]: action.value,
+            };
+
+            return output;
         }
         case "setConnectionProperty": {
             if (!action.property || action.value === undefined)
                 throw new Error(
                     'Action "setConnectionProperty" requires property and value'
                 );
-            
-            state.connection[action.property as keyof IConnectionDialogProfile] = action.value;
 
-            break;
-            // return output;
+            const output: ConnectionDialogState = {
+                ...state,
+                connection: {
+                    ...state.connection,
+                    [action.property]: action.value,
+                },
+            };
+
+            return output;
         }
         case "validate": {
-            state.errors = {}; // reset errors
-            if (state.connection.server !== undefined && state.connection.server.trim() === "") {
-                state.errors.server = "Server is required";
+            const output: ConnectionDialogState = {
+                ...state,
+                errors: {},
+            };
+
+            if (
+                state.connection.server !== undefined &&
+                state.connection.server.trim() === ""
+            ) {
+                output.errors.server = "Server is required";
             }
 
             if (state.connection.authType === AuthType.SqlAuth) {
-                if (state.connection.user !== undefined && state.connection.user.trim() === "") {
-                    state.errors.user = "Username is required";
+                if (
+                    state.connection.user !== undefined &&
+                    state.connection.user.trim() === ""
+                ) {
+                    output.errors.user = "Username is required";
                 }
             }
-            break;
+            
+            return output;
         }
         default:
             console.log("Unknown action", action);
-            break;
+            return state;
     }
 }
 
@@ -84,11 +102,19 @@ interface ConnectionDialogProps {
     connection?: IConnectionDialogProfile;
 }
 
+const initialConnection: IConnectionDialogProfile = {
+    profileName: "",
+    server: "benjin.database.windows.net",
+    authType: AuthType.IntegratedAuth,
+};
+
 export function ConnectionDialog({ connection }: ConnectionDialogProps) {
     const initialState: ConnectionDialogState = {
-        connection: connection ?? { server: "", authType: AuthType.SqlAuth },
+        connection: connection ?? initialConnection,
         errors: {},
     };
+
+console.log(initialState);
 
     return (
         <FormProvider<ConnectionDialogState>
