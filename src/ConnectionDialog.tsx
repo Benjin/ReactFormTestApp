@@ -1,7 +1,8 @@
 import { Dropdown, Field, Input, Textarea, Option, makeStyles, Button } from "@fluentui/react-components";
 import type { InputProps } from "@fluentui/react-components";
 import { useConnection, useConnectionDispatch } from "./ConnectionContext";
-import { AuthType } from "./IConnectionDialogProfile";
+import { AuthType, IConnectionDialogProfile } from "./IConnectionDialogProfile";
+import { FormAction, FormProvider, useForm, useFormDispatch } from "./Form";
 
 const useStyles = makeStyles({
     root: {
@@ -15,9 +16,39 @@ const useStyles = makeStyles({
     },
   });
 
-export function ConnectionDialog(props: InputProps) {
-    const connection = useConnection();
-    const dispatch = useConnectionDispatch();
+  const initialConnectionProfile: IConnectionDialogProfile = {
+    server: "benjin.database.windows.net",
+    authType: AuthType.SqlAuth
+  };
+  
+  function formReducer<T>(formData: T, action: FormAction): T {
+    switch (action.type) {
+      case 'set': {
+        if (!action.property || action.value === undefined) throw new Error('Action "set" requires property and value');
+        
+        const output: T = {
+         ...formData,
+         [action.property]: action.value
+        } ;      
+  
+        return output;
+      }
+      default:
+        return formData;
+    }
+  }
+
+export function ConnectionDialog() {
+    return (
+        <FormProvider initialState={initialConnectionProfile} reducer={ formReducer }>
+            <ConnectionDialogForm />
+        </FormProvider>
+    )
+}
+
+export function ConnectionDialogForm(props: InputProps) {
+    const connection = useForm<IConnectionDialogProfile>();
+    const dispatch = useFormDispatch();
     const styles = useStyles();
 
     return (
