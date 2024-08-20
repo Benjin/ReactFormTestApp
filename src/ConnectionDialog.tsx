@@ -12,6 +12,7 @@ import {
     DialogSurface,
     DialogTitle,
     Text,
+    MessageBar,
 } from "@fluentui/react-components";
 import type { InputProps } from "@fluentui/react-components";
 import { AuthType, IConnectionDialogProfile } from "./IConnectionDialogProfile";
@@ -30,34 +31,69 @@ const useStyles = makeStyles({
     },
 });
 
-const initialConnectionProfile: IConnectionDialogProfile = {
-    server: "benjin.database.windows.net",
-    authType: AuthType.SqlAuth,
-};
+interface ConnectionDialogState {
+    connection: IConnectionDialogProfile;
+    errors: Partial<Record<keyof IConnectionDialogProfile, string>>;
+}
 
-function formReducer<T>(formData: T, action: FormAction): T {
+function connectionDialogReducer(
+    state: ConnectionDialogState,
+    action: FormAction
+): void {
     switch (action.action) {
         case "set": {
             if (!action.property || action.value === undefined)
                 throw new Error('Action "set" requires property and value');
 
-            const output: T = {
-                ...formData,
-                [action.property]: action.value,
-            };
+            state[action.property as keyof ConnectionDialogState] = action.value;
+            
+            break;
+            // return output;
+        }
+        case "setConnectionProperty": {
+            if (!action.property || action.value === undefined)
+                throw new Error(
+                    'Action "setConnectionProperty" requires property and value'
+                );
+            
+            state.connection[action.property as keyof IConnectionDialogProfile] = action.value;
 
-            return output;
+            break;
+            // return output;
+        }
+        case "validate": {
+            state.errors = {}; // reset errors
+            if (state.connection.server !== undefined && state.connection.server.trim() === "") {
+                state.errors.server = "Server is required";
+            }
+
+            if (state.connection.authType === AuthType.SqlAuth) {
+                if (state.connection.user !== undefined && state.connection.user.trim() === "") {
+                    state.errors.user = "Username is required";
+                }
+            }
+            break;
         }
         default:
-            return formData;
+            console.log("Unknown action", action);
+            break;
     }
 }
 
-export function ConnectionDialog() {
+interface ConnectionDialogProps {
+    connection?: IConnectionDialogProfile;
+}
+
+export function ConnectionDialog({ connection }: ConnectionDialogProps) {
+    const initialState: ConnectionDialogState = {
+        connection: connection ?? { server: "", authType: AuthType.SqlAuth },
+        errors: {},
+    };
+
     return (
-        <FormProvider
-            initialState={initialConnectionProfile}
-            reducer={formReducer}
+        <FormProvider<ConnectionDialogState>
+            initialState={initialState}
+            reducer={connectionDialogReducer}
         >
             <ConnectionDialogForm />
         </FormProvider>
@@ -65,7 +101,7 @@ export function ConnectionDialog() {
 }
 
 export function ConnectionDialogForm(props: InputProps) {
-    const connection = useForm<IConnectionDialogProfile>();
+    const state = useForm<ConnectionDialogState>();
     const dispatch = useFormDispatch();
     const styles = useStyles();
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,19 +111,19 @@ export function ConnectionDialogForm(props: InputProps) {
         <div className={styles.root}>
             <h1>Connection Dialog</h1>
 
-            <Field
-                label="Server"
-                validationMessage={
-                    !connection.server ? "Server is required" : ""
-                }
-            >
+            <Field label="Server" validationMessage={state.errors.server}>
                 <Input
-                    value={connection.server}
+                    value={state.connection.server}
                     onChange={(e) => {
                         dispatch({
-                            action: "set",
+                            action: "setConnectionProperty",
                             property: "server",
                             value: e.target.value,
+                        });
+                        dispatch({
+                            action: "validate",
+                            property: "",
+                            value: undefined,
                         });
                     }}
                 />
@@ -95,10 +131,10 @@ export function ConnectionDialogForm(props: InputProps) {
 
             <Field label="Authentication Type">
                 <Dropdown
-                    value={connection.authType}
+                    value={state.connection.authType}
                     onOptionSelect={(e, d) => {
                         dispatch({
-                            action: "set",
+                            action: "setConnectionProperty",
                             property: "authType",
                             value: d.optionValue,
                         });
@@ -110,27 +146,32 @@ export function ConnectionDialogForm(props: InputProps) {
                 </Dropdown>
             </Field>
 
-            {connection.authType === AuthType.SqlAuth && (
-                <Field label="Username">
+            {state.connection.authType === AuthType.SqlAuth && (
+                <Field label="Username" validationMessage={state.errors.user}>
                     <Input
-                        value={connection.user}
+                        value={state.connection.user ?? ""}
                         onChange={(e) => {
                             dispatch({
-                                action: "set",
+                                action: "setConnectionProperty",
                                 property: "user",
                                 value: e.target.value,
+                            });
+                            dispatch({
+                                action: "validate",
+                                property: "",
+                                value: undefined,
                             });
                         }}
                     />
                 </Field>
             )}
-            {connection.authType === AuthType.AzureEntra && (
+            {state.connection.authType === AuthType.AzureEntra && (
                 <Field label="Tenant">
                     <Dropdown
-                        value={connection.tenant}
+                        value={state.connection.tenant}
                         onOptionSelect={(e, d) => {
                             dispatch({
-                                action: "set",
+                                action: "setConnectionProperty",
                                 property: "tenant",
                                 value: d.optionValue,
                             });
@@ -147,18 +188,26 @@ export function ConnectionDialogForm(props: InputProps) {
 
             <Button
                 {...restoreFocusTargetAttribute}
+                appearance="primary"
                 onClick={() => {
                     setDialogOpen(true);
                 }}
+                disabled={Object.values(state.errors).some((error) => !!error)}
             >
                 Connect
             </Button>
 
             <Textarea
-                value={JSON.stringify(connection)}
+                value={JSON.stringify(state.connection)}
                 readOnly={true}
                 disabled={true}
             />
+
+            {Object.values(state.errors).length > 0 && (
+                <MessageBar intent="error">
+                    {Object.values(state.errors).join("\n")}
+                </MessageBar>
+            )}
 
             <Dialog
                 open={dialogOpen}
@@ -166,7 +215,12 @@ export function ConnectionDialogForm(props: InputProps) {
             >
                 <DialogSurface>
                     <DialogTitle>Connection successful!</DialogTitle>
-                    <DialogBody><Text>You've connected with <code>{ JSON.stringify(connection) }</code></Text></DialogBody>
+                    <DialogBody>
+                        <Text>
+                            You've connected with{" "}
+                            <code>{JSON.stringify(state.connection)}</code>
+                        </Text>
+                    </DialogBody>
                 </DialogSurface>
             </Dialog>
         </div>
