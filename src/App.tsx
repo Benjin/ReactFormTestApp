@@ -6,7 +6,6 @@ function App() {
   return (
     <FluentProvider theme={webLightTheme}>
       <div className="App">
-        Hello!
         <ConnectionDialog />
       </div>
     </FluentProvider>
