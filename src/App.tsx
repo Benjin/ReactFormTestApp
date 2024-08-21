@@ -13,31 +13,29 @@ const existingConnections: IConnectionDialogProfile[] = [
     {
         profileName: "Dev",
         server: "localhost",
-        authType: AuthType.SqlAuth,
+        authType: AuthType.UsernamePassword,
     },
     {
         profileName: "Prod",
         server: "prodserver",
-        authType: AuthType.AzureEntra,
+        authType: AuthType.CertificateAuth,
     },
 ];
 
 function App() {
     const [selectedConnectionName, setSelectedConnectionName] =
-        useState<string>("");
+        useState<string>("Dev");
+
+    function getConnection() {
+        const conn = selectedConnectionName ? existingConnections.find(c => c.profileName === selectedConnectionName) : undefined;
+        return conn;
+    }
 
     return (
         <FluentProvider theme={webLightTheme}>
             <div className="App">
                 <ConnectionDialog
-                    connection={
-                        selectedConnectionName
-                            ? existingConnections.find(
-                                  (c) =>
-                                      c.profileName === selectedConnectionName
-                              )
-                            : undefined
-                    }
+                    connection={ getConnection() }
                 />
                 {existingConnections.length > 0 && (
                     <Dropdown
@@ -53,7 +51,7 @@ function App() {
                                     key={index}
                                     value={connection.profileName}
                                 >
-                                    {connection.server}
+                                    {connection.profileName}
                                 </Option>
                             );
                         })}

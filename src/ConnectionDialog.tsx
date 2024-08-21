@@ -39,18 +39,15 @@ interface ConnectionDialogState {
 function connectionDialogReducer(
     state: ConnectionDialogState,
     action: FormAction
-): ConnectionDialogState {
+): void {
     switch (action.action) {
         case "set": {
             if (!action.property || action.value === undefined)
                 throw new Error('Action "set" requires property and value');
 
-            const output: ConnectionDialogState = {
-                ...state,
-                [action.property]: action.value,
-            };
-
-            return output;
+            state[action.property as keyof ConnectionDialogState] =
+                action.value;
+            break;
         }
         case "setConnectionProperty": {
             if (!action.property || action.value === undefined)
@@ -58,43 +55,36 @@ function connectionDialogReducer(
                     'Action "setConnectionProperty" requires property and value'
                 );
 
-            const output: ConnectionDialogState = {
-                ...state,
-                connection: {
-                    ...state.connection,
-                    [action.property]: action.value,
-                },
-            };
+            state.connection[
+                action.property as keyof IConnectionDialogProfile
+            ] = action.value;
 
-            return output;
+            break;
         }
         case "validate": {
-            const output: ConnectionDialogState = {
-                ...state,
-                errors: {},
-            };
+            state.errors = {};
 
             if (
                 state.connection.server !== undefined &&
                 state.connection.server.trim() === ""
             ) {
-                output.errors.server = "Server is required";
+                state.errors.server = "Server is required";
             }
 
-            if (state.connection.authType === AuthType.SqlAuth) {
+            if (state.connection.authType === AuthType.UsernamePassword) {
                 if (
                     state.connection.user !== undefined &&
                     state.connection.user.trim() === ""
                 ) {
-                    output.errors.user = "Username is required";
+                    state.errors.user = "Username is required";
                 }
             }
-            
-            return output;
+
+            break;
         }
         default:
             console.log("Unknown action", action);
-            return state;
+            break;
     }
 }
 
@@ -102,19 +92,21 @@ interface ConnectionDialogProps {
     connection?: IConnectionDialogProfile;
 }
 
-const initialConnection: IConnectionDialogProfile = {
-    profileName: "",
-    server: "benjin.database.windows.net",
-    authType: AuthType.IntegratedAuth,
-};
+function getInitialConnection(): IConnectionDialogProfile {
+    return {
+        profileName: "Placeholder",
+        server: "placeholder.database.com",
+        authType: AuthType.IntegratedAuth,
+    };
+}
 
 export function ConnectionDialog({ connection }: ConnectionDialogProps) {
     const initialState: ConnectionDialogState = {
-        connection: connection ?? initialConnection,
+        connection: connection ?? getInitialConnection(),
         errors: {},
     };
 
-console.log(initialState);
+    console.log(initialState);
 
     return (
         <FormProvider<ConnectionDialogState>
@@ -172,7 +164,7 @@ export function ConnectionDialogForm(props: InputProps) {
                 </Dropdown>
             </Field>
 
-            {state.connection.authType === AuthType.SqlAuth && (
+            {state.connection.authType === AuthType.UsernamePassword && (
                 <Field label="Username" validationMessage={state.errors.user}>
                     <Input
                         value={state.connection.user ?? ""}
@@ -189,26 +181,6 @@ export function ConnectionDialogForm(props: InputProps) {
                             });
                         }}
                     />
-                </Field>
-            )}
-            {state.connection.authType === AuthType.AzureEntra && (
-                <Field label="Tenant">
-                    <Dropdown
-                        value={state.connection.tenant}
-                        onOptionSelect={(e, d) => {
-                            dispatch({
-                                action: "setConnectionProperty",
-                                property: "tenant",
-                                value: d.optionValue,
-                            });
-                        }}
-                    >
-                        {["Corp tenant", "Personal tenant", "AME tenant"].map(
-                            (type) => (
-                                <Option key={type}>{type}</Option>
-                            )
-                        )}
-                    </Dropdown>
                 </Field>
             )}
 

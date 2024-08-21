@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useReducer } from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { ImmerReducer, useImmerReducer } from "use-immer";
 
 const FormContext = createContext<any | null>(null);
@@ -15,7 +15,7 @@ export interface FormAction {
 
 interface FormProviderProps<TState> {
     initialState: TState;
-    reducer: (state: TState, action: FormAction) => TState;
+    reducer: ImmerReducer<TState, FormAction>;
     children: ReactNode;
 }
 
@@ -24,7 +24,7 @@ export function FormProvider<TState>({
     reducer,
     children,
 }: FormProviderProps<TState>) {
-    const [formData, dispatch] = useReducer(reducer, initialState);
+    const [formData, dispatch] = useImmerReducer(reducer, initialState);
 
     return (
         <FormContext.Provider value={formData}>
